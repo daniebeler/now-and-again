@@ -3,15 +3,18 @@ package com.daniebeler.nowandagain.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,20 +44,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.daniebeler.nowandagain.data.Task
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+private sealed interface SheetMode {
+    data object Add : SheetMode
+    data class Edit(val task: Task) : SheetMode
+}
 
 @Composable
 fun HomeScreen(vm: HomeViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var showAddSheet by remember { mutableStateOf(false) }
+
+    var sheetMode by remember { mutableStateOf<SheetMode?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddSheet = true }) {
+            FloatingActionButton(onClick = { sheetMode = SheetMode.Add }) {
                 //Icon(Icons.Default.Add, contentDescription = "Add task")
             }
         },
@@ -62,8 +73,9 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
             state.loading -> Unit
             state.items.isEmpty() -> EmptyState(
                 modifier = Modifier.padding(padding),
-                onAdd = { showAddSheet = true },
+                onAdd = { sheetMode = SheetMode.Add },
             )
+
             else -> LazyColumn(
                 modifier = Modifier.padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -73,6 +85,7 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
                     TaskCard(
                         item = item,
                         modifier = Modifier.animateItem(),
+                        onClick = { sheetMode = SheetMode.Edit(item.task) },
                         onDone = {
                             vm.markDone(item.task)
                             scope.launch {
@@ -93,21 +106,41 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
         }
     }
 
-    if (showAddSheet) {
-        AddTaskSheet(
-            onDismiss = { showAddSheet = false },
+    sheetMode?.let { mode ->
+        val editing = (mode as? SheetMode.Edit)?.task
+        TaskSheet(
+            initial = editing,
+            onDismiss = { sheetMode = null },
             onSave = { name, days ->
-                vm.addTask(name, days)
-                showAddSheet = false
+                if (editing == null) vm.addTask(name, days) else vm.editTask(editing, name, days)
+                sheetMode = null
+            },
+            onDelete = editing?.let { task ->
+                {
+                    vm.delete(task)
+                    sheetMode = null
+                    scope.launch {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        val result = snackbarHostState.showSnackbar(
+                            message = "${task.name} deleted",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) vm.undoDelete(task)
+                    }
+                }
             },
         )
     }
 }
 
 @Composable
-private fun TaskCard(item: TaskItem, onDone: () -> Unit, modifier: Modifier = Modifier) {
+private fun TaskCard(
+    item: TaskItem, onClick: () -> Unit, onDone: () -> Unit, modifier: Modifier = Modifier
+) {
     val overdue = item.daysLeft < 0
     Card(
+        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (overdue) MaterialTheme.colorScheme.errorContainer
@@ -153,9 +186,18 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddTaskSheet(onDismiss: () -> Unit, onSave: (String, Int) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var days by remember { mutableFloatStateOf(3f) }
+private fun TaskSheet(
+    initial: Task?,
+    onDismiss: () -> Unit,
+    onSave: (String, Int) -> Unit,
+    onDelete: (() -> Unit)?,
+) {
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var days by remember {
+        mutableFloatStateOf(
+            (initial?.intervalDays ?: 3).toFloat().coerceIn(1f, 60f)
+        )
+    }
     val interval = days.roundToInt()
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -183,11 +225,26 @@ private fun AddTaskSheet(onDismiss: () -> Unit, onSave: (String, Int) -> Unit) {
                 valueRange = 1f..60f,
             )
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { onSave(name, interval) },
-                enabled = name.isNotBlank(),
-                modifier = Modifier.align(Alignment.End),
-            ) { Text("Save") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) { Text("Delete") }
+                } else {
+                    Spacer(Modifier.width(1.dp))
+                }
+                Button(
+                    onClick = { onSave(name, interval) },
+                    enabled = name.isNotBlank(),
+                ) { Text("Save") }
+            }
         }
     }
 }

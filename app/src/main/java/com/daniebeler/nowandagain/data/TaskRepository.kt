@@ -11,4 +11,5 @@ class TaskRepository(private val dao: TaskDao) {
 
     suspend fun update(task: Task) = dao.update(task)
     suspend fun delete(task: Task) = dao.delete(task)
+    suspend fun restore(task: Task) = dao.insert(task)
 }

@@ -73,4 +73,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun delete(task: Task) {
         viewModelScope.launch { repo.delete(task) }
     }
+
+    fun editTask(task: Task, name: String, intervalDays: Int) {
+        viewModelScope.launch {
+            repo.update(task.copy(name = name.trim(), intervalDays = intervalDays))
+        }
+    }
+
+    /** Undo for delete: re-insert the task with its old id and data. */
+    fun undoDelete(task: Task) {
+        viewModelScope.launch { repo.restore(task) }
+    }
 }
