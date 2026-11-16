@@ -39,12 +39,16 @@ import com.daniebeler.nowandagain.data.AppDatabase
 import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.domain.daysLeft
 import com.daniebeler.nowandagain.domain.markDone
-import com.daniebeler.nowandagain.domain.statusText
 import java.time.LocalDate
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.layout.Spacer
 import com.daniebeler.nowandagain.domain.dueLabel
 import com.daniebeler.nowandagain.domain.progress
+import androidx.glance.material3.ColorProviders
+import com.daniebeler.nowandagain.ui.theme.DarkColorScheme
+import com.daniebeler.nowandagain.ui.theme.LightColorScheme
+
+private val WidgetColors = ColorProviders(light = LightColorScheme, dark = DarkColorScheme)
 
 class NextTasksWidget : GlanceAppWidget() {
 
@@ -53,7 +57,7 @@ class NextTasksWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val tasks = AppDatabase.get(context).taskDao().getActive()
         provideContent {
-            GlanceTheme { WidgetContent(tasks) }
+            GlanceTheme(colors = WidgetColors) { WidgetContent(tasks) }
         }
     }
 }
@@ -68,12 +72,8 @@ private fun WidgetContent(tasks: List<Task>) {
     val items = tasks.sortedBy { it.daysLeft(today) }.take(maxItems)
 
     Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .appWidgetBackground()
-            .background(GlanceTheme.colors.widgetBackground)
-            .cornerRadius(24.dp)
-            .padding(12.dp)
+        modifier = GlanceModifier.fillMaxSize().appWidgetBackground()
+            .background(GlanceTheme.colors.widgetBackground).cornerRadius(24.dp).padding(12.dp)
             .clickable(actionStartActivity<MainActivity>()),
     ) {
         if (items.isEmpty()) {
