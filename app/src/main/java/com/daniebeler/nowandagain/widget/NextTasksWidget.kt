@@ -41,6 +41,10 @@ import com.daniebeler.nowandagain.domain.daysLeft
 import com.daniebeler.nowandagain.domain.markDone
 import com.daniebeler.nowandagain.domain.statusText
 import java.time.LocalDate
+import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.layout.Spacer
+import com.daniebeler.nowandagain.domain.dueLabel
+import com.daniebeler.nowandagain.domain.progress
 
 class NextTasksWidget : GlanceAppWidget() {
 
@@ -59,7 +63,7 @@ val TaskIdKey = ActionParameters.Key<Long>("taskId")
 @Composable
 private fun WidgetContent(tasks: List<Task>) {
     val today = LocalDate.now()
-    val rowHeight = 56.dp
+    val rowHeight = 72.dp
     val maxItems = ((LocalSize.current.height - 24.dp) / rowHeight).toInt().coerceIn(1, 6)
     val items = tasks.sortedBy { it.daysLeft(today) }.take(maxItems)
 
@@ -81,15 +85,15 @@ private fun WidgetContent(tasks: List<Task>) {
             }
         } else {
             items.forEach { task ->
-                TaskRow(task, task.daysLeft(today), rowHeight)
+                TaskRow(task, today, rowHeight)
             }
         }
     }
 }
 
 @Composable
-private fun TaskRow(task: Task, daysLeft: Long, height: Dp) {
-    val overdue = daysLeft < 0
+private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
+    val overdue = task.daysLeft(today) < 0
     Row(
         modifier = GlanceModifier.fillMaxWidth().height(height),
         verticalAlignment = Alignment.CenterVertically,
@@ -105,13 +109,20 @@ private fun TaskRow(task: Task, daysLeft: Long, height: Dp) {
                 ),
             )
             Text(
-                statusText(daysLeft),
+                task.dueLabel(today),
                 maxLines = 1,
                 style = TextStyle(
                     fontSize = 12.sp,
                     color = if (overdue) GlanceTheme.colors.error
                     else GlanceTheme.colors.onSurfaceVariant,
                 ),
+            )
+            Spacer(GlanceModifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = task.progress(today).coerceIn(0f, 1f),
+                modifier = GlanceModifier.fillMaxWidth().padding(end = 12.dp),
+                color = if (overdue) GlanceTheme.colors.error else GlanceTheme.colors.primary,
+                backgroundColor = GlanceTheme.colors.secondaryContainer,
             )
         }
         Button(

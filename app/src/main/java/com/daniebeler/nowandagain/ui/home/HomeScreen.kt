@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.data.Task
+import com.daniebeler.nowandagain.domain.dueLabel
 import com.daniebeler.nowandagain.domain.statusText
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -149,7 +150,10 @@ private fun TaskCard(
     ) {
         Column(Modifier.padding(20.dp)) {
             Text(item.task.name, style = MaterialTheme.typography.headlineSmall)
-            Text(statusText(item.daysLeft), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "${statusText(item.daysLeft)} · ${item.task.dueLabel()}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
                 progress = { item.progress.coerceIn(0f, 1f) },
