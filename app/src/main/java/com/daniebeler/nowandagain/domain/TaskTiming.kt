@@ -18,3 +18,11 @@ fun Task.progress(today: LocalDate = LocalDate.now()): Float {
 }
 
 fun Task.markDone(today: LocalDate = LocalDate.now()) = copy(lastDoneDate = today)
+
+fun statusText(daysLeft: Long): String = when {
+    daysLeft < -1 -> "Overdue by ${-daysLeft} days"
+    daysLeft == -1L -> "Overdue by 1 day"
+    daysLeft == 0L -> "Due today"
+    daysLeft == 1L -> "Due tomorrow"
+    else -> "In $daysLeft days"
+}

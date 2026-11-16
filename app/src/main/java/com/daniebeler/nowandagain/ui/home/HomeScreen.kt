@@ -19,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.data.Task
+import com.daniebeler.nowandagain.domain.statusText
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -161,14 +161,6 @@ private fun TaskCard(
             }
         }
     }
-}
-
-private fun statusText(daysLeft: Long): String = when {
-    daysLeft < -1 -> "Overdue by ${-daysLeft} days"
-    daysLeft == -1L -> "Overdue by 1 day"
-    daysLeft == 0L -> "Due today"
-    daysLeft == 1L -> "Due tomorrow"
-    else -> "In $daysLeft days"
 }
 
 @Composable

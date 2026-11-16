@@ -16,4 +16,10 @@ interface TaskDao {
 
     @Delete
     suspend fun delete(task: Task)
+
+    @Query("SELECT * FROM tasks WHERE archived = 0")
+    suspend fun getActive(): List<Task>
+
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun getById(id: Long): Task?
 }

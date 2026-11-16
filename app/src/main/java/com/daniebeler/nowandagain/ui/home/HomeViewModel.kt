@@ -1,6 +1,7 @@
 package com.daniebeler.nowandagain.ui.home
 
 import android.app.Application
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.daniebeler.nowandagain.data.AppDatabase
@@ -9,6 +10,7 @@ import com.daniebeler.nowandagain.data.TaskRepository
 import com.daniebeler.nowandagain.domain.daysLeft
 import com.daniebeler.nowandagain.domain.markDone
 import com.daniebeler.nowandagain.domain.progress
+import com.daniebeler.nowandagain.widget.NextTasksWidget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +58,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 .sortedBy { it.daysLeft }
             HomeUiState(items = items, loading = false)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    init {
+        viewModelScope.launch {
+            repo.tasks.collect {
+                NextTasksWidget().updateAll(getApplication<Application>())
+            }
+        }
+    }
 
     fun addTask(name: String, intervalDays: Int) {
         viewModelScope.launch { repo.add(name, intervalDays) }
