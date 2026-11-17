@@ -8,12 +8,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -32,11 +35,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
@@ -57,7 +62,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,12 +78,18 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.R
@@ -93,6 +106,9 @@ private sealed interface SheetMode {
     data object Add : SheetMode
     data class Edit(val task: Task) : SheetMode
 }
+
+private const val FOOTER_KEY = "footer"
+private val FOOTER_MIN_HEIGHT = 200.dp
 
 @Composable
 fun HomeScreen(
@@ -122,42 +138,69 @@ fun HomeScreen(
                         onAdd = { sheetMode = SheetMode.Add },
                     )
 
-                    else -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            top = statusBarTop + topBarHeight,
-                            bottom = padding.calculateBottomPadding() + 96.dp,
-                        ),
-                    ) {
-                        itemsIndexed(
-                            state.items,
-                            key = { _, item -> item.task.id }) { index, item ->
-                            Column(Modifier.animateItem()) {
-                                if (index > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    else -> {
+                        val listState = rememberLazyListState()
+                        val density = LocalDensity.current
+                        val footerMinPx = with(density) { FOOTER_MIN_HEIGHT.roundToPx() }
+                        val taskCount = state.items.size
+
+                        // Height of the footer item. With few tasks it grows, so that the
+                        // whole list is exactly one footer taller than the screen.
+                        val footerHeightPx by remember(taskCount, footerMinPx) {
+                            derivedStateOf {
+                                val info = listState.layoutInfo
+                                val tasks = info.visibleItemsInfo.filter { it.key != FOOTER_KEY }
+                                if (tasks.size < taskCount) {
+                                    footerMinPx // long list: not every task is visible, so no extra space is needed
+                                } else {
+                                    val used =
+                                        info.beforeContentPadding + tasks.sumOf { it.size } + info.afterContentPadding
+                                    maxOf(
+                                        footerMinPx, info.viewportSize.height + footerMinPx - used
                                     )
                                 }
-                                TaskListItem(
-                                    item = item,
-                                    onClick = { sheetMode = SheetMode.Edit(item.task) },
-                                    onDone = {
-                                        vm.markDone(item.task)
-                                        scope.launch {
-                                            snackbarHostState.currentSnackbarData?.dismiss()
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "${item.task.name} done",
-                                                actionLabel = "Undo",
-                                                duration = SnackbarDuration.Short,
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                vm.restore(item.task)
+                            }
+                        }
+
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = statusBarTop + topBarHeight),
+                        ) {
+                            itemsIndexed(
+                                state.items, key = { _, item -> item.task.id }) { index, item ->
+                                Column(Modifier.animateItem()) {
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 20.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                                alpha = 0.5f
+                                            ),
+                                        )
+                                    }
+                                    TaskListItem(
+                                        item = item,
+                                        onClick = { sheetMode = SheetMode.Edit(item.task) },
+                                        onDone = {
+                                            vm.markDone(item.task)
+                                            scope.launch {
+                                                snackbarHostState.currentSnackbarData?.dismiss()
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "${item.task.name} done",
+                                                    actionLabel = "Undo",
+                                                    duration = SnackbarDuration.Short,
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    vm.restore(item.task)
+                                                }
                                             }
-                                        }
-                                    },
-                                )
+                                        },
+                                    )
+                                }
+                            }
+                            item(key = FOOTER_KEY) {
+                                ListFooter(Modifier.height(with(density) { footerHeightPx.toDp() }))
                             }
                         }
                     }
@@ -208,9 +251,7 @@ fun HomeScreen(
                 onDismiss = { sheetMode = null },
                 onSave = { name, days ->
                     if (editing == null) vm.addTask(name, days) else vm.editTask(
-                        editing,
-                        name,
-                        days
+                        editing, name, days
                     )
                     sheetMode = null
                 },
@@ -311,14 +352,49 @@ private fun TaskListItem(
 
 @Composable
 private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("Nothing to keep up with yet", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onAdd) { Text("Add your first task") }
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = maxHeight)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(
+                    if (dark) R.drawable.playful_cat else R.drawable.playful_cat
+                ),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp),
+            )
+            Spacer(Modifier.height(32.dp))
+            Text(
+                "Keep up with what matters",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Add something you want to do regularly, like calling a friend, " + "watering the plants or going for a run, and choose the longest " + "break you're okay with. Tap Done whenever you've done it and " + "the timer starts over. Doing it earlier is always fine.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = onAdd,
+                shape = MaterialTheme.shapes.small,
+                contentPadding = PaddingValues(horizontal = 28.dp, vertical = 16.dp),
+            ) { Text("Add your first task") }
+        }
     }
 }
 
@@ -432,6 +508,7 @@ private fun SheetContent(
         }
     }
 }
+
 private const val MAX_INTERVAL = 365
 
 private val presets = listOf(
@@ -494,5 +571,47 @@ private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ListFooter(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.cow),
+            contentDescription = null,
+            modifier = Modifier.height(72.dp),
+        )
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+        Spacer(Modifier.height(12.dp))
+
+        val uriHandler = LocalUriHandler.current
+
+        Text(
+            "A Ghostbyte Production",
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.6.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable(onClickLabel = "Open ghostbyte.dev") {
+                    try {
+                        uriHandler.openUri("https://ghostbyte.dev")
+                    } catch (_: Exception) {
+                        // No browser installed: do nothing
+                    }
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
