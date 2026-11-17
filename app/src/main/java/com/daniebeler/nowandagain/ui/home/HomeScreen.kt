@@ -126,7 +126,20 @@ fun HomeScreen(
                             TaskListItem(
                                 item = item,
                                 onClick = { sheetMode = SheetMode.Edit(item.task) },
-                                onDone = { /* unchanged */ },
+                                onDone = {
+                                    vm.markDone(item.task)
+                                    scope.launch {
+                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "${item.task.name} done",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short,
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            vm.restore(item.task)
+                                        }
+                                    }
+                                },
                             )
                         }
                     }
@@ -232,17 +245,33 @@ private fun TaskListItem(
                 )
             }
             Spacer(Modifier.width(16.dp))
-            FilledIconButton(
-                onClick = onDone,
-                modifier = Modifier.size(44.dp),
-                shape = RoundedCornerShape(10.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = "Mark ${item.task.name} as done",
-                    modifier = Modifier.size(24.dp),
-                )
+
+            val doneToday = item.status == TaskStatus.DoneToday
+
+            if (doneToday) {
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = "Done today",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            } else {
+                FilledIconButton(
+                    onClick = onDone,
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = "Mark ${item.task.name} as done",
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
+
+
         }
         Spacer(Modifier.height(12.dp))
         LinearProgressIndicator(
