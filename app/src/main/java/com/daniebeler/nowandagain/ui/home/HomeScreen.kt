@@ -1,18 +1,23 @@
 package com.daniebeler.nowandagain.ui.home
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +42,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,7 +50,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +57,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,11 +65,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.dueLabel
-import com.daniebeler.nowandagain.domain.statusText
 import com.daniebeler.nowandagain.ui.theme.AppLogo
+import com.daniebeler.nowandagain.ui.theme.ThemeToggleButton
 import com.daniebeler.nowandagain.ui.theme.barColor
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 private sealed interface SheetMode {
     data object Add : SheetMode
@@ -82,25 +85,11 @@ fun HomeScreen(
 
     var sheetMode by remember { mutableStateOf<SheetMode?>(null) }
 
+    val topBarHeight = 120.dp
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val background = MaterialTheme.colorScheme.background
+
     Scaffold(
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, end = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppLogo(size = 56.dp)
-                IconButton(onClick = onToggleTheme) {
-                    Icon(
-                        imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                        contentDescription = if (darkTheme) "Switch to light mode" else "Switch to dark mode",
-                    )
-                }
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { sheetMode = SheetMode.Add }) {
@@ -108,39 +97,65 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        when {
-            state.loading -> Unit
-            state.items.isEmpty() -> EmptyState(
-                modifier = Modifier.padding(padding),
-                onAdd = { sheetMode = SheetMode.Add },
+        Box(Modifier.fillMaxSize()) {
+
+            // 1. Content, drawn behind the bar
+            when {
+                state.loading -> Unit
+                state.items.isEmpty() -> EmptyState(
+                    modifier = Modifier.padding(padding),
+                    onAdd = { sheetMode = SheetMode.Add },
+                )
+
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = statusBarTop + topBarHeight,
+                        bottom = padding.calculateBottomPadding() + 96.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.items, key = { it.task.id }) { item ->
+                        TaskCard(
+                            item = item,
+                            modifier = Modifier.animateItem(),
+                            onClick = { sheetMode = SheetMode.Edit(item.task) },
+                            onDone = { /* unchanged */ },
+                        )
+                    }
+                }
+            }
+
+            // 2. Fade: cards dissolve into the background toward the top
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(statusBarTop + topBarHeight + 24.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to background,
+                            0.55f to background.copy(alpha = 0.9f),
+                            1f to background.copy(alpha = 0f),
+                        )
+                    )
             )
 
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            // 3. Bar: logo and theme toggle, transparent
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(topBarHeight)
+                    .padding(start = 16.dp, end = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(state.items, key = { it.task.id }) { item ->
-                    TaskCard(
-                        item = item,
-                        modifier = Modifier.animateItem(),
-                        onClick = { sheetMode = SheetMode.Edit(item.task) },
-                        onDone = {
-                            vm.markDone(item.task)
-                            scope.launch {
-                                snackbarHostState.currentSnackbarData?.dismiss()
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "${item.task.name} done",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short,
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    vm.restore(item.task)
-                                }
-                            }
-                        },
-                    )
-                }
+                AppLogo(size = 67.dp)
+                ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
             }
         }
     }
