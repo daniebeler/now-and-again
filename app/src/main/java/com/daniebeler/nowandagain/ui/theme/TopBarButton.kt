@@ -21,11 +21,11 @@ fun TopBarButton(
         onClick = onClick,
         modifier = modifier.size(50.dp),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         ),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }

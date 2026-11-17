@@ -1,9 +1,17 @@
 package com.daniebeler.nowandagain.ui.home
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +23,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,30 +33,30 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,11 +66,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -94,121 +108,129 @@ fun HomeScreen(
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val background = MaterialTheme.colorScheme.background
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            Box(Modifier.fillMaxSize()) {
 
-            // 1. Content, drawn behind the bar
-            when {
-                state.loading -> Unit
-                state.items.isEmpty() -> EmptyState(
-                    modifier = Modifier.padding(padding),
-                    onAdd = { sheetMode = SheetMode.Add },
-                )
+                // 1. Content, drawn behind the bar
+                when {
+                    state.loading -> Unit
+                    state.items.isEmpty() -> EmptyState(
+                        modifier = Modifier.padding(padding),
+                        onAdd = { sheetMode = SheetMode.Add },
+                    )
 
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = statusBarTop + topBarHeight,
-                        bottom = padding.calculateBottomPadding() + 96.dp,
-                    ),
-                ) {
-                    itemsIndexed(state.items, key = { _, item -> item.task.id }) { index, item ->
-                        Column(Modifier.animateItem()) {
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            top = statusBarTop + topBarHeight,
+                            bottom = padding.calculateBottomPadding() + 96.dp,
+                        ),
+                    ) {
+                        itemsIndexed(
+                            state.items,
+                            key = { _, item -> item.task.id }) { index, item ->
+                            Column(Modifier.animateItem()) {
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    )
+                                }
+                                TaskListItem(
+                                    item = item,
+                                    onClick = { sheetMode = SheetMode.Edit(item.task) },
+                                    onDone = {
+                                        vm.markDone(item.task)
+                                        scope.launch {
+                                            snackbarHostState.currentSnackbarData?.dismiss()
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "${item.task.name} done",
+                                                actionLabel = "Undo",
+                                                duration = SnackbarDuration.Short,
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                vm.restore(item.task)
+                                            }
+                                        }
+                                    },
                                 )
                             }
-                            TaskListItem(
-                                item = item,
-                                onClick = { sheetMode = SheetMode.Edit(item.task) },
-                                onDone = {
-                                    vm.markDone(item.task)
-                                    scope.launch {
-                                        snackbarHostState.currentSnackbarData?.dismiss()
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "${item.task.name} done",
-                                            actionLabel = "Undo",
-                                            duration = SnackbarDuration.Short,
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            vm.restore(item.task)
-                                        }
-                                    }
-                                },
-                            )
                         }
                     }
                 }
-            }
 
-            // 2. Fade: cards dissolve into the background toward the top
-            Box(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(statusBarTop + topBarHeight + 24.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            0f to background,
-                            0.55f to background.copy(alpha = 0.9f),
-                            1f to background.copy(alpha = 0f),
+                // 2. Fade: cards dissolve into the background toward the top
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(statusBarTop + topBarHeight + 24.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                0f to background,
+                                0.55f to background.copy(alpha = 0.9f),
+                                1f to background.copy(alpha = 0f),
+                            )
                         )
-                    )
-            )
+                )
 
-            // 3. Bar: logo and theme toggle, transparent
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .height(topBarHeight)
-                    .padding(start = 16.dp, end = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppLogo(size = 67.dp)
+                // 3. Bar: logo and theme toggle, transparent
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .height(topBarHeight)
+                        .padding(start = 16.dp, end = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AddTaskButton(onClick = { sheetMode = SheetMode.Add })
-                    ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
+                    AppLogo(size = 67.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AddTaskButton(onClick = { sheetMode = SheetMode.Add })
+                        ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
+                    }
                 }
             }
         }
-    }
 
-    sheetMode?.let { mode ->
-        val editing = (mode as? SheetMode.Edit)?.task
-        TaskSheet(
-            initial = editing,
-            onDismiss = { sheetMode = null },
-            onSave = { name, days ->
-                if (editing == null) vm.addTask(name, days) else vm.editTask(editing, name, days)
-                sheetMode = null
-            },
-            onDelete = editing?.let { task ->
-                {
-                    vm.delete(task)
+        sheetMode?.let { mode ->
+            val editing = (mode as? SheetMode.Edit)?.task
+            TaskSheet(
+                initial = editing,
+                onDismiss = { sheetMode = null },
+                onSave = { name, days ->
+                    if (editing == null) vm.addTask(name, days) else vm.editTask(
+                        editing,
+                        name,
+                        days
+                    )
                     sheetMode = null
-                    scope.launch {
-                        snackbarHostState.currentSnackbarData?.dismiss()
-                        val result = snackbarHostState.showSnackbar(
-                            message = "${task.name} deleted",
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short,
-                        )
-                        if (result == SnackbarResult.ActionPerformed) vm.undoDelete(task)
+                },
+                onDelete = editing?.let { task ->
+                    {
+                        vm.delete(task)
+                        sheetMode = null
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            val result = snackbarHostState.showSnackbar(
+                                message = "${task.name} deleted",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) vm.undoDelete(task)
+                        }
                     }
-                }
-            },
-        )
+                },
+            )
+        }
     }
 }
 
@@ -235,8 +257,6 @@ private fun TaskListItem(
                     item.task.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     item.task.dueLabel(),
@@ -302,7 +322,6 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskSheet(
     initial: Task?,
@@ -310,22 +329,81 @@ private fun TaskSheet(
     onSave: (String, Int) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    BackHandler(onBack = onDismiss)
+
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    )
+            )
+        }
+
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .imePadding(),
+            enter = slideInVertically(animationSpec = tween(300)) { it },
+            exit = slideOutVertically(animationSpec = tween(200)) { it },
+        ) {
+            SheetContent(initial, onSave, onDelete)
+        }
+    }
+}
+
+@Composable
+private fun SheetContent(
+    initial: Task?,
+    onSave: (String, Int) -> Unit,
+    onDelete: (() -> Unit)?,
+) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var days by remember { mutableIntStateOf(initial?.intervalDays ?: 3) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(Unit) {
+        if (initial == null) focusRequester.requestFocus()
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge.copy(
+            bottomStart = CornerSize(0.dp),
+            bottomEnd = CornerSize(0.dp),
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
         Column(
             Modifier
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-                .navigationBarsPadding(),
+                .padding(top = 24.dp, bottom = 24.dp),
         ) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Task") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
             )
             Spacer(Modifier.height(24.dp))
             IntervalPicker(days = days, onChange = { days = it.coerceIn(1, MAX_INTERVAL) })
@@ -348,12 +426,12 @@ private fun TaskSheet(
                 Button(
                     onClick = { onSave(name, days) },
                     enabled = name.isNotBlank(),
+                    shape = MaterialTheme.shapes.small,
                 ) { Text("Save") }
             }
         }
     }
 }
-
 private const val MAX_INTERVAL = 365
 
 private val presets = listOf(

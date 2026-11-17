@@ -31,8 +31,6 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
-androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
-
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
