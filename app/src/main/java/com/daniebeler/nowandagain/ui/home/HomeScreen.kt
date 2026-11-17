@@ -62,6 +62,7 @@ import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.dueLabel
 import com.daniebeler.nowandagain.domain.statusText
+import com.daniebeler.nowandagain.ui.theme.AppLogo
 import com.daniebeler.nowandagain.ui.theme.barColor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -87,9 +88,11 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.End,
+                    .padding(start = 16.dp, end = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                AppLogo(size = 56.dp)
                 IconButton(onClick = onToggleTheme) {
                     Icon(
                         imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
