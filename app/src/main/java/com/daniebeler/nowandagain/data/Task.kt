@@ -9,6 +9,10 @@ data class Task(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val intervalDays: Int,
-    val lastDoneDate: LocalDate = LocalDate.now(),
+    val createdDate: LocalDate = LocalDate.now(),
+    val lastDoneDate: LocalDate? = null,
     val archived: Boolean = false,
 )
+
+/** The day the clock started: last completion, or creation if never done. */
+val Task.startDate: LocalDate get() = lastDoneDate ?: createdDate

@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.daniebeler.nowandagain.data.AppDatabase
 import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.data.TaskRepository
+import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.daysLeft
 import com.daniebeler.nowandagain.domain.markDone
 import com.daniebeler.nowandagain.domain.progress
+import com.daniebeler.nowandagain.domain.status
 import com.daniebeler.nowandagain.widget.NextTasksWidget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +31,7 @@ data class TaskItem(
     val task: Task,
     val daysLeft: Long,
     val progress: Float,
+    val status: TaskStatus,
 )
 
 data class HomeUiState(
@@ -51,11 +54,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val now: Flow<LocalDateTime> = flow {
+        while (true) {
+            emit(LocalDateTime.now())
+            delay(60_000.milliseconds)
+        }
+    }
+
     val state: StateFlow<HomeUiState> =
-        combine(repo.tasks, today) { tasks, day ->
+        combine(repo.tasks, now) { tasks, now ->
+            val day = now.toLocalDate()
             val items = tasks
-                .map { TaskItem(it, it.daysLeft(day), it.progress(day)) }
-                .sortedBy { it.daysLeft }
+                .map { TaskItem(it, it.daysLeft(day), it.progress(now), it.status(day)) }
+                .sortedWith(compareBy({ it.daysLeft }, { -it.progress }))
             HomeUiState(items = items, loading = false)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 

@@ -1,5 +1,7 @@
 package com.daniebeler.nowandagain.ui.home
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,14 +12,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -34,18 +40,22 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.data.Task
+import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.dueLabel
 import com.daniebeler.nowandagain.domain.statusText
+import com.daniebeler.nowandagain.ui.theme.barColor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -139,30 +149,36 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
 private fun TaskCard(
     item: TaskItem, onClick: () -> Unit, onDone: () -> Unit, modifier: Modifier = Modifier
 ) {
-    val overdue = item.daysLeft < 0
+    val barColor = item.status.barColor(neutral = MaterialTheme.colorScheme.primary)
+    val target = if (item.status == TaskStatus.DoneToday) 1f else item.progress.coerceIn(0f, 1f)
+    val animated by animateFloatAsState(target, label = "progress")
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (overdue) MaterialTheme.colorScheme.errorContainer
-            else MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
     ) {
         Column(Modifier.padding(20.dp)) {
             Text(item.task.name, style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "${statusText(item.daysLeft)} · ${item.task.dueLabel()}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Text(item.task.dueLabel(), style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
-                progress = { item.progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
+                progress = { animated },
+                modifier = Modifier.fillMaxWidth().height(12.dp),
+                color = barColor,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                strokeCap = StrokeCap.Butt,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
             )
             Spacer(Modifier.height(12.dp))
-            Button(onClick = onDone, modifier = Modifier.align(Alignment.End)) {
-                Text("Done")
-            }
+            Button(
+                onClick = onDone,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.align(Alignment.End),
+            ) { Text("Done") }
         }
     }
 }
@@ -189,12 +205,7 @@ private fun TaskSheet(
     onDelete: (() -> Unit)?,
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
-    var days by remember {
-        mutableFloatStateOf(
-            (initial?.intervalDays ?: 3).toFloat().coerceIn(1f, 60f)
-        )
-    }
-    val interval = days.roundToInt()
+    var days by remember { mutableIntStateOf(initial?.intervalDays ?: 3) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -211,15 +222,7 @@ private fun TaskSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(24.dp))
-            Text(
-                if (interval == 1) "At least every day" else "At least every $interval days",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Slider(
-                value = days,
-                onValueChange = { days = it },
-                valueRange = 1f..60f,
-            )
+            IntervalPicker(days = days, onChange = { days = it.coerceIn(1, MAX_INTERVAL) })
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -237,9 +240,74 @@ private fun TaskSheet(
                     Spacer(Modifier.width(1.dp))
                 }
                 Button(
-                    onClick = { onSave(name, interval) },
+                    onClick = { onSave(name, days) },
                     enabled = name.isNotBlank(),
                 ) { Text("Save") }
+            }
+        }
+    }
+}
+
+private const val MAX_INTERVAL = 365
+
+private val presets = listOf(
+    1 to "Daily",
+    2 to "2 days",
+    3 to "3 days",
+    7 to "Weekly",
+    14 to "2 weeks",
+    30 to "30 days",
+)
+
+@Composable
+private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
+    Column {
+        Text(
+            "At least every",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            FilledTonalIconButton(
+                onClick = { onChange(days - 1) },
+                enabled = days > 1,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.size(56.dp),
+            ) { Text("−", style = MaterialTheme.typography.headlineMedium) }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$days", style = MaterialTheme.typography.displayMedium)
+                Text(
+                    if (days == 1) "day" else "days",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            FilledTonalIconButton(
+                onClick = { onChange(days + 1) },
+                enabled = days < MAX_INTERVAL,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.size(56.dp),
+            ) { Text("+", style = MaterialTheme.typography.headlineMedium) }
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            presets.forEach { (value, label) ->
+                FilterChip(
+                    selected = days == value,
+                    onClick = { onChange(value) },
+                    label = { Text(label) },
+                    shape = MaterialTheme.shapes.small,
+                )
             }
         }
     }

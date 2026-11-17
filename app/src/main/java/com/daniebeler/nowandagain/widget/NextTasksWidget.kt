@@ -41,14 +41,27 @@ import com.daniebeler.nowandagain.domain.daysLeft
 import com.daniebeler.nowandagain.domain.markDone
 import java.time.LocalDate
 import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Spacer
 import com.daniebeler.nowandagain.domain.dueLabel
 import com.daniebeler.nowandagain.domain.progress
 import androidx.glance.material3.ColorProviders
+import com.daniebeler.nowandagain.domain.TaskStatus
+import com.daniebeler.nowandagain.domain.status
 import com.daniebeler.nowandagain.ui.theme.DarkColorScheme
+import com.daniebeler.nowandagain.ui.theme.Green40
+import com.daniebeler.nowandagain.ui.theme.Green80
 import com.daniebeler.nowandagain.ui.theme.LightColorScheme
+import com.daniebeler.nowandagain.ui.theme.Orange40
+import com.daniebeler.nowandagain.ui.theme.Orange80
+import com.daniebeler.nowandagain.ui.theme.Red40
+import com.daniebeler.nowandagain.ui.theme.Red80
 
 private val WidgetColors = ColorProviders(light = LightColorScheme, dark = DarkColorScheme)
+
+private val WidgetGreen = ColorProvider(day = Green40, night = Green80)
+private val WidgetOrange = ColorProvider(day = Orange40, night = Orange80)
+private val WidgetRed = ColorProvider(day = Red40, night = Red80)
 
 class NextTasksWidget : GlanceAppWidget() {
 
@@ -93,6 +106,16 @@ private fun WidgetContent(tasks: List<Task>) {
 
 @Composable
 private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
+
+    val status = task.status(today)
+    val barColor = when (status) {
+        TaskStatus.DoneToday -> WidgetGreen
+        TaskStatus.DueToday -> WidgetOrange
+        TaskStatus.Overdue -> WidgetRed
+        TaskStatus.Fine -> GlanceTheme.colors.primary
+    }
+    val progress = if (status == TaskStatus.DoneToday) 1f else task.progress().coerceIn(0f, 1f)
+
     val overdue = task.daysLeft(today) < 0
     Row(
         modifier = GlanceModifier.fillMaxWidth().height(height),
@@ -119,9 +142,9 @@ private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
             )
             Spacer(GlanceModifier.height(6.dp))
             LinearProgressIndicator(
-                progress = task.progress(today).coerceIn(0f, 1f),
-                modifier = GlanceModifier.fillMaxWidth().padding(end = 12.dp),
-                color = if (overdue) GlanceTheme.colors.error else GlanceTheme.colors.primary,
+                progress = progress,
+                modifier = GlanceModifier.fillMaxWidth().height(8.dp).padding(end = 12.dp),
+                color = barColor,
                 backgroundColor = GlanceTheme.colors.secondaryContainer,
             )
         }

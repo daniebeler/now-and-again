@@ -1,12 +1,14 @@
 package com.daniebeler.nowandagain.domain
 
 import com.daniebeler.nowandagain.data.Task
+import com.daniebeler.nowandagain.data.startDate
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.time.format.TextStyle
 import java.util.Locale
 
-fun Task.dueDate(): LocalDate = lastDoneDate.plusDays(intervalDays.toLong())
+fun Task.dueDate(): LocalDate = startDate.plusDays(intervalDays.toLong())
 
 fun Task.daysLeft(today: LocalDate = LocalDate.now()): Long =
     ChronoUnit.DAYS.between(today, dueDate())   // negative = overdue
@@ -16,6 +18,7 @@ fun Task.dueLabel(today: LocalDate = LocalDate.now(), locale: Locale = Locale.ge
     val left = daysLeft(today)
     val due = dueDate()
     return when {
+        status(today) == TaskStatus.DoneToday -> "Done today"
         left < 0 -> statusText(left)                      // "Overdue by 2 days"
         left == 0L -> "Due today"
         left == 1L -> "Until tomorrow"
@@ -24,10 +27,11 @@ fun Task.dueLabel(today: LocalDate = LocalDate.now(), locale: Locale = Locale.ge
                 "${due.dayOfMonth} ${due.month.getDisplayName(TextStyle.SHORT, locale)}"
     }
 }
-/** Fraction of the interval already used (0f..1f+), for the progress indicator. */
-fun Task.progress(today: LocalDate = LocalDate.now()): Float {
-    val elapsed = ChronoUnit.DAYS.between(lastDoneDate, today)
-    return elapsed.toFloat() / intervalDays
+
+fun Task.progress(now: LocalDateTime = LocalDateTime.now()): Float {
+    val daysSinceStart = ChronoUnit.DAYS.between(startDate, now.toLocalDate())
+    val fractionOfToday = now.toLocalTime().toSecondOfDay() / 86_400f
+    return ((daysSinceStart - 1 + fractionOfToday) / intervalDays).coerceAtLeast(0f)
 }
 
 fun Task.markDone(today: LocalDate = LocalDate.now()) = copy(lastDoneDate = today)
@@ -38,4 +42,17 @@ fun statusText(daysLeft: Long): String = when {
     daysLeft == 0L -> "Due today"
     daysLeft == 1L -> "Due tomorrow"
     else -> "In $daysLeft days"
+}
+
+enum class TaskStatus { DoneToday, Fine, DueToday, Overdue }
+
+fun Task.status(today: LocalDate = LocalDate.now()): TaskStatus {
+    val left = daysLeft(today)
+    val done = lastDoneDate
+    return when {
+        done != null && !done.isBefore(today) -> TaskStatus.DoneToday
+        left < 0 -> TaskStatus.Overdue
+        left == 0L -> TaskStatus.DueToday
+        else -> TaskStatus.Fine
+    }
 }
