@@ -2,6 +2,7 @@ package com.daniebeler.nowandagain.ui.home
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,22 +22,20 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -57,14 +56,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.daniebeler.nowandagain.R
 import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.dueLabel
+import com.daniebeler.nowandagain.ui.theme.AddTaskButton
 import com.daniebeler.nowandagain.ui.theme.AppLogo
 import com.daniebeler.nowandagain.ui.theme.ThemeToggleButton
 import com.daniebeler.nowandagain.ui.theme.barColor
@@ -91,11 +96,6 @@ fun HomeScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { sheetMode = SheetMode.Add }) {
-                Icon(Icons.Default.Add, contentDescription = "Add task")
-            }
-        },
     ) { padding ->
         Box(Modifier.fillMaxSize()) {
 
@@ -110,20 +110,25 @@ fun HomeScreen(
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
                         top = statusBarTop + topBarHeight,
                         bottom = padding.calculateBottomPadding() + 96.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.items, key = { it.task.id }) { item ->
-                        TaskCard(
-                            item = item,
-                            modifier = Modifier.animateItem(),
-                            onClick = { sheetMode = SheetMode.Edit(item.task) },
-                            onDone = { /* unchanged */ },
-                        )
+                    itemsIndexed(state.items, key = { _, item -> item.task.id }) { index, item ->
+                        Column(Modifier.animateItem()) {
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                )
+                            }
+                            TaskListItem(
+                                item = item,
+                                onClick = { sheetMode = SheetMode.Edit(item.task) },
+                                onDone = { /* unchanged */ },
+                            )
+                        }
                     }
                 }
             }
@@ -155,7 +160,13 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AppLogo(size = 67.dp)
-                ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AddTaskButton(onClick = { sheetMode = SheetMode.Add })
+                    ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
+                }
             }
         }
     }
@@ -189,42 +200,63 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TaskCard(
-    item: TaskItem, onClick: () -> Unit, onDone: () -> Unit, modifier: Modifier = Modifier
+private fun TaskListItem(
+    item: TaskItem,
+    onClick: () -> Unit,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val barColor = item.status.barColor(neutral = MaterialTheme.colorScheme.primary)
     val target = if (item.status == TaskStatus.DoneToday) 1f else item.progress.coerceIn(0f, 1f)
     val animated by animateFloatAsState(target, label = "progress")
 
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 32.dp),
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Text(item.task.name, style = MaterialTheme.typography.headlineSmall)
-            Text(item.task.dueLabel(), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { animated },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp),
-                color = barColor,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                strokeCap = StrokeCap.Butt,
-                gapSize = 0.dp,
-                drawStopIndicator = {},
-            )
-            Spacer(Modifier.height(12.dp))
-            Button(
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.task.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    item.task.dueLabel(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            FilledIconButton(
                 onClick = onDone,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.align(Alignment.End),
-            ) { Text("Done") }
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check),
+                    contentDescription = "Mark ${item.task.name} as done",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
+        Spacer(Modifier.height(12.dp))
+        LinearProgressIndicator(
+            progress = { animated },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = barColor,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            strokeCap = StrokeCap.Butt,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
     }
 }
 
