@@ -1,6 +1,11 @@
 package com.daniebeler.nowandagain.ui.home
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -64,7 +69,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,6 +84,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
@@ -90,6 +95,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daniebeler.nowandagain.R
@@ -123,6 +129,21 @@ fun HomeScreen(
     val topBarHeight = 120.dp
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val background = MaterialTheme.colorScheme.background
+
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* nothing to do: if denied, no reminders */ }
+
+    fun askForNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -250,9 +271,12 @@ fun HomeScreen(
                 initial = editing,
                 onDismiss = { sheetMode = null },
                 onSave = { name, days ->
-                    if (editing == null) vm.addTask(name, days) else vm.editTask(
-                        editing, name, days
-                    )
+                    if (editing == null) {
+                        vm.addTask(name, days)
+                        askForNotifications()
+                    } else {
+                        vm.editTask(editing, name, days)
+                    }
                     sheetMode = null
                 },
                 onDelete = editing?.let { task ->
