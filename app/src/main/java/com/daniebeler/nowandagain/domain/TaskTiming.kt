@@ -18,7 +18,6 @@ fun Task.dueLabel(today: LocalDate = LocalDate.now(), locale: Locale = Locale.ge
     val left = daysLeft(today)
     val due = dueDate()
     return when {
-        status(today) == TaskStatus.DoneToday -> "Done today"
         left < 0 -> statusText(left)                      // "Overdue by 2 days"
         left == 0L -> "Due today"
         left == 1L -> "Until tomorrow"
@@ -54,5 +53,21 @@ fun Task.status(today: LocalDate = LocalDate.now()): TaskStatus {
         left < 0 -> TaskStatus.Overdue
         left == 0L -> TaskStatus.DueToday
         else -> TaskStatus.Fine
+    }
+}
+
+fun Task.intervalLabel(): String = when {
+    intervalDays == 1 -> "Every day"
+    intervalDays == 7 -> "At least every week"
+    intervalDays % 7 == 0 && intervalDays <= 28 -> "At least every ${intervalDays / 7} weeks"
+    else -> "At least every $intervalDays days"
+}
+
+fun Task.lastDoneLabel(today: LocalDate = LocalDate.now()): String {
+    val done = lastDoneDate ?: return "Not done yet"
+    return when (val ago = ChronoUnit.DAYS.between(done, today)) {
+        in Long.MIN_VALUE..0L -> "Last done today"
+        1L -> "Last done yesterday"
+        else -> "Last done $ago days ago"
     }
 }

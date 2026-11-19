@@ -107,6 +107,15 @@ import com.daniebeler.nowandagain.ui.theme.AppLogo
 import com.daniebeler.nowandagain.ui.theme.ThemeToggleButton
 import com.daniebeler.nowandagain.ui.theme.barColor
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import com.daniebeler.nowandagain.data.startDate
+import com.daniebeler.nowandagain.domain.intervalLabel
+import com.daniebeler.nowandagain.domain.lastDoneLabel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 private sealed interface SheetMode {
     data object Add : SheetMode
@@ -359,18 +368,52 @@ private fun TaskListItem(
 
         }
         Spacer(Modifier.height(12.dp))
+
+        val gapColor = MaterialTheme.colorScheme.background
+        val days = item.task.intervalDays
+        val tickEvery = if (days <= 14) 1 else 7
+        val showTicks = days / tickEvery in 2..16
+
         LinearProgressIndicator(
             progress = { animated },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
-                .clip(RoundedCornerShape(3.dp)),
+                .clip(RoundedCornerShape(3.dp))
+                .drawWithContent {
+                    drawContent()
+                    if (showTicks) {
+                        val gap = 2.dp.toPx()
+                        var d = tickEvery
+                        while (d < days) {
+                            val x = size.width * d / days
+                            drawRect(gapColor, Offset(x - gap / 2, 0f), Size(gap, size.height))
+                            d += tickEvery
+                        }
+                    }
+                },
             color = barColor,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             strokeCap = StrokeCap.Butt,
             gapSize = 0.dp,
             drawStopIndicator = {},
         )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                item.task.lastDoneLabel(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                item.task.intervalLabel(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
