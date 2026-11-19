@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.daniebeler.nowandagain"
+    namespace = "dev.ghostbyte.nowandagain"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.daniebeler.nowandagain"
+        applicationId = "dev.ghostbyte.nowandagain"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
