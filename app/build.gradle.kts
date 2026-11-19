@@ -18,6 +18,8 @@ android {
         versionName = "1.0"
     }
 
+    androidResources { localeFilters += listOf("en", "de") }
+
     buildTypes {
         release {
             optimization {

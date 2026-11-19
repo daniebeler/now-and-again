@@ -22,13 +22,10 @@ object Notifications {
     fun createChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Daily reminder",
+            context.getString(R.string.channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = "A morning summary of tasks that are due"
-        }
-        context.getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(channel)
+        ).apply { description = context.getString(R.string.channel_description) }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     @SuppressLint("MissingPermission") // areNotificationsEnabled() covers the permission
@@ -45,24 +42,27 @@ object Notifications {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(openApp)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+        val builder =
+            NotificationCompat.Builder(context, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification)
+                .setContentIntent(openApp).setAutoCancel(true)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
 
         if (tasks.size == 1) {
             val task = tasks.first()
             builder.setContentTitle(task.name)
-                .setContentText(task.dueLabel(today))
+                .setContentText(task.dueLabel(context.resources, today))
         } else {
             val inbox = NotificationCompat.InboxStyle()
-            tasks.take(MAX_LINES).forEach { inbox.addLine("${it.name} · ${it.dueLabel(today)}") }
-            if (tasks.size > MAX_LINES) inbox.setSummaryText("+${tasks.size - MAX_LINES} more")
-
-            builder.setContentTitle("${tasks.size} tasks need you today")
-                .setContentText(tasks.joinToString(", ") { it.name })
-                .setStyle(inbox)
+            tasks.take(MAX_LINES)
+                .forEach { inbox.addLine("${it.name} · ${it.dueLabel(context.resources, today)}") }
+            if (tasks.size > MAX_LINES) {
+                inbox.setSummaryText(
+                    context.getString(
+                        R.string.notification_more, tasks.size - MAX_LINES
+                    )
+                )
+            }
+            builder.setContentTitle(context.getString(R.string.notification_title_many, tasks.size))
         }
 
         manager.notify(NOTIFICATION_ID, builder.build())

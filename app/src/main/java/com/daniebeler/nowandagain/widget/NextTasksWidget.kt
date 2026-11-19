@@ -2,6 +2,7 @@ package com.daniebeler.nowandagain.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,6 +108,8 @@ private fun WidgetContent(tasks: List<Task>) {
 @Composable
 private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
 
+    val context = LocalContext.current
+
     val status = task.status(today)
     val barColor = when (status) {
         TaskStatus.DoneToday -> WidgetGreen
@@ -132,7 +135,7 @@ private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
                 ),
             )
             Text(
-                task.dueLabel(today),
+                task.dueLabel(context.resources, today),
                 maxLines = 1,
                 style = TextStyle(
                     fontSize = 12.sp,

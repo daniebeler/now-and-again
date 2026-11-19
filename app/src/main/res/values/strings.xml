@@ -1,4 +1,64 @@
 <resources>
     <string name="app_name">Now &amp; Again</string>
     <string name="widget_description">Your next tasks at a glance</string>
+
+    <!-- Actions -->
+    <string name="action_done">Done</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+
+    <!-- Accessibility -->
+    <string name="cd_add_task">Add task</string>
+    <string name="cd_switch_to_light">Switch to light mode</string>
+    <string name="cd_switch_to_dark">Switch to dark mode</string>
+    <string name="cd_done_today">Done today</string>
+    <string name="cd_open_website">Open ghostbyte.dev</string>
+
+    <!-- Snackbars -->
+    <string name="snackbar_task_done">%1$s done</string>
+    <string name="snackbar_task_deleted">%1$s deleted</string>
+
+    <!-- Task sheet -->
+    <string name="field_task">Task</string>
+    <string name="picker_label">At least every</string>
+    <plurals name="unit_days">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
+    <string name="preset_daily">Daily</string>
+    <string name="preset_weekly">Weekly</string>
+    <string name="preset_days">%1$d days</string>
+    <string name="preset_weeks">%1$d weeks</string>
+
+    <!-- Empty state -->
+    <string name="empty_title">Keep up with what matters</string>
+    <string name="empty_body">Add something you want to do regularly, like calling your dad, watering the plants or going for a run, and choose the longest break you\'re okay with. Tap Done whenever you\'ve done it and the timer starts over. Doing it earlier is always fine.</string>
+    <string name="empty_action">Add your first task</string>
+
+    <!-- Footer -->
+    <string name="footer_credit" translatable="false">A Ghostbyte Production</string>
+    <string name="website_url" translatable="false">https://ghostbyte.dev</string>
+
+    <!-- Task labels -->
+    <string name="overdue_one_day">Overdue by 1 day</string>
+    <string name="overdue_days">Overdue by %1$d days</string>
+    <string name="due_today">Due today</string>
+    <string name="until_tomorrow">Until tomorrow</string>
+    <string name="until_date">Until %1$s</string>
+    <string name="interval_every_day">At least every day</string>
+    <string name="interval_every_week">At least every week</string>
+    <string name="interval_every_weeks">At least every %1$d weeks</string>
+    <string name="interval_every_days">At least every %1$d days</string>
+    <string name="last_done_never">Not done yet</string>
+    <string name="last_done_today">Done today</string>
+    <string name="last_done_yesterday">Done yesterday</string>
+    <string name="last_done_days_ago">Done %1$d days ago</string>
+
+    <!-- Notification and widget -->
+    <string name="channel_name">Daily reminder</string>
+    <string name="channel_description">A morning summary of tasks that are due</string>
+    <string name="notification_title_many">%1$d tasks need you today</string>
+    <string name="notification_more">+%1$d more</string>
+    <string name="widget_empty">Nothing to keep up with</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.daniebeler.nowandagain.R
 
@@ -19,7 +20,9 @@ fun ThemeToggleButton(
         Crossfade(targetState = darkTheme, label = "themeIcon") { dark ->
             Icon(
                 painter = painterResource(if (dark) R.drawable.ic_moon else R.drawable.ic_sun),
-                contentDescription = if (dark) "Switch to light mode" else "Switch to dark mode",
+                contentDescription = stringResource(
+                    if (dark) R.string.cd_switch_to_light else R.string.cd_switch_to_dark
+                ),
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -31,7 +34,7 @@ fun AddTaskButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     TopBarButton(onClick = onClick, modifier = modifier) {
         Icon(
             painter = painterResource(R.drawable.ic_plus),
-            contentDescription = "Add task",
+            contentDescription = stringResource(R.string.cd_add_task),
             modifier = Modifier.size(22.dp),
         )
     }

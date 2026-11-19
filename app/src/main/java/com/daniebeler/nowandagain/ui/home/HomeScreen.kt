@@ -77,8 +77,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -87,8 +90,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -102,20 +108,13 @@ import com.daniebeler.nowandagain.R
 import com.daniebeler.nowandagain.data.Task
 import com.daniebeler.nowandagain.domain.TaskStatus
 import com.daniebeler.nowandagain.domain.dueLabel
+import com.daniebeler.nowandagain.domain.intervalLabel
+import com.daniebeler.nowandagain.domain.lastDoneLabel
 import com.daniebeler.nowandagain.ui.theme.AddTaskButton
 import com.daniebeler.nowandagain.ui.theme.AppLogo
 import com.daniebeler.nowandagain.ui.theme.ThemeToggleButton
 import com.daniebeler.nowandagain.ui.theme.barColor
 import kotlinx.coroutines.launch
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import com.daniebeler.nowandagain.data.startDate
-import com.daniebeler.nowandagain.domain.intervalLabel
-import com.daniebeler.nowandagain.domain.lastDoneLabel
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private sealed interface SheetMode {
     data object Add : SheetMode
@@ -140,14 +139,15 @@ fun HomeScreen(
     val background = MaterialTheme.colorScheme.background
 
     val context = LocalContext.current
+    val resources = LocalResources.current
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* nothing to do: if denied, no reminders */ }
 
     fun askForNotifications() {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
+                context, Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -217,8 +217,8 @@ fun HomeScreen(
                                             scope.launch {
                                                 snackbarHostState.currentSnackbarData?.dismiss()
                                                 val result = snackbarHostState.showSnackbar(
-                                                    message = "${item.task.name} done",
-                                                    actionLabel = "Undo",
+                                                    message = resources.getString(R.string.snackbar_task_done, item.task.name),
+                                                    actionLabel = resources.getString(R.string.action_undo),
                                                     duration = SnackbarDuration.Short,
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
@@ -295,8 +295,8 @@ fun HomeScreen(
                         scope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
-                                message = "${task.name} deleted",
-                                actionLabel = "Undo",
+                                message = resources.getString(R.string.snackbar_task_deleted, task.name),
+                                actionLabel = resources.getString(R.string.action_undo),
                                 duration = SnackbarDuration.Short,
                             )
                             if (result == SnackbarResult.ActionPerformed) vm.undoDelete(task)
@@ -315,6 +315,8 @@ private fun TaskListItem(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resources = LocalResources.current
+
     val barColor = item.status.barColor(neutral = MaterialTheme.colorScheme.primary)
     val target = if (item.status == TaskStatus.DoneToday) 1f else item.progress.coerceIn(0f, 1f)
     val animated by animateFloatAsState(target, label = "progress")
@@ -333,7 +335,7 @@ private fun TaskListItem(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    item.task.dueLabel(),
+                    item.task.dueLabel(resources),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -346,7 +348,7 @@ private fun TaskListItem(
                 Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(R.drawable.ic_check),
-                        contentDescription = "Done today",
+                        contentDescription = stringResource(R.string.cd_done_today),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
@@ -404,12 +406,12 @@ private fun TaskListItem(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                item.task.lastDoneLabel(),
+                item.task.lastDoneLabel(resources),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                item.task.intervalLabel(),
+                item.task.intervalLabel(resources),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -443,14 +445,14 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.height(32.dp))
             Text(
-                "Keep up with what matters",
+                stringResource(R.string.empty_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Add something you want to do regularly, like calling a friend, " + "watering the plants or going for a run, and choose the longest " + "break you're okay with. Tap Done whenever you've done it and " + "the timer starts over. Doing it earlier is always fine.",
+                stringResource(R.string.empty_body),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -460,7 +462,7 @@ private fun EmptyState(onAdd: () -> Unit, modifier: Modifier = Modifier) {
                 onClick = onAdd,
                 shape = MaterialTheme.shapes.small,
                 contentPadding = PaddingValues(horizontal = 28.dp, vertical = 16.dp),
-            ) { Text("Add your first task") }
+            ) { Text(stringResource(R.string.empty_action)) }
         }
     }
 }
@@ -537,7 +539,7 @@ private fun SheetContent(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Task") },
+                label = { Text(stringResource(R.string.field_task)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
@@ -562,7 +564,7 @@ private fun SheetContent(
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.error,
                         ),
-                    ) { Text("Delete") }
+                    ) { Text(stringResource(R.string.action_delete)) }
                 } else {
                     Spacer(Modifier.width(1.dp))
                 }
@@ -570,7 +572,7 @@ private fun SheetContent(
                     onClick = { onSave(name, days) },
                     enabled = name.isNotBlank(),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("Save") }
+                ) { Text(stringResource(R.string.action_save)) }
             }
         }
     }
@@ -578,20 +580,21 @@ private fun SheetContent(
 
 private const val MAX_INTERVAL = 365
 
-private val presets = listOf(
-    1 to "Daily",
-    2 to "2 days",
-    3 to "3 days",
-    7 to "Weekly",
-    14 to "2 weeks",
-    30 to "30 days",
-)
+private val presets = listOf(1, 2, 3, 7, 14, 30)
+
+@Composable
+private fun presetLabel(days: Int): String = when (days) {
+    1 -> stringResource(R.string.preset_daily)
+    7 -> stringResource(R.string.preset_weekly)
+    14 -> stringResource(R.string.preset_weeks, 2)
+    else -> stringResource(R.string.preset_days, days)
+}
 
 @Composable
 private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
     Column {
         Text(
-            "At least every",
+            stringResource(R.string.picker_label),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -611,7 +614,7 @@ private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("$days", style = MaterialTheme.typography.displayMedium)
                 Text(
-                    if (days == 1) "day" else "days",
+                    pluralStringResource(R.plurals.unit_days, days),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -629,11 +632,11 @@ private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            presets.forEach { (value, label) ->
+            presets.forEach { value ->
                 FilterChip(
                     selected = days == value,
                     onClick = { onChange(value) },
-                    label = { Text(label) },
+                    label = { Text(presetLabel(value)) },
                     shape = MaterialTheme.shapes.small,
                 )
             }
@@ -665,13 +668,13 @@ private fun ListFooter(modifier: Modifier = Modifier) {
         val uriHandler = LocalUriHandler.current
 
         Text(
-            "A Ghostbyte Production",
+            stringResource(R.string.footer_credit),
             style = MaterialTheme.typography.labelSmall,
             letterSpacing = 0.6.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier
                 .clip(MaterialTheme.shapes.small)
-                .clickable(onClickLabel = "Open ghostbyte.dev") {
+                .clickable(onClickLabel = stringResource(R.string.cd_open_website)) {
                     try {
                         uriHandler.openUri("https://ghostbyte.dev")
                     } catch (_: Exception) {
