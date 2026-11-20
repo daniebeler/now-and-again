@@ -60,6 +60,7 @@ import dev.ghostbyte.nowandagain.notifications.ReminderScheduler
 import dev.ghostbyte.nowandagain.ui.components.AppFooter
 import dev.ghostbyte.nowandagain.ui.components.ListDivider
 import dev.ghostbyte.nowandagain.ui.theme.TopBarButton
+import dev.ghostbyte.nowandagain.widget.WidgetPinner
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -74,14 +75,20 @@ fun SettingsScreen(onBack: () -> Unit) {
     var notificationsAllowed by remember {
         mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
     }
-    LifecycleResumeEffect(Unit) {
-        notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
-        onPauseOrDispose {}
-    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
         notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    var hasWidget by remember { mutableStateOf(WidgetPinner.hasWidget(context)) }
+    val canPinWidget = remember { WidgetPinner.canPin(context) }
+
+    LifecycleResumeEffect(Unit) {
+        notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        hasWidget = WidgetPinner.hasWidget(context)
+        onPauseOrDispose {}
     }
 
     Column(
@@ -180,6 +187,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                         )
                     }
                 }
+            }
+        }
+
+        if (canPinWidget && !hasWidget) {
+            ListDivider()
+            SettingsRow(
+                title = stringResource(R.string.setting_widget),
+                onClick = { WidgetPinner.requestPin(context) },
+            ) {
+                Text(
+                    stringResource(R.string.setting_widget_action),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
 

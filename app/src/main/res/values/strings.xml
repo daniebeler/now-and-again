@@ -87,4 +87,7 @@
     <string name="privacy_note">Everything stays on your device.</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+
+    <string name="setting_widget">Home screen widget</string>
+    <string name="setting_widget_action">Add</string>
 </resources>

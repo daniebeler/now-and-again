@@ -76,4 +76,7 @@
     <string name="privacy_note">Alles bleibt auf deinem Gerät.</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Abbrechen</string>
+
+    <string name="setting_widget">Startbildschirm-Widget</string>
+    <string name="setting_widget_action">Hinzufügen</string>
 </resources>
