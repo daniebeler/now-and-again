@@ -118,8 +118,7 @@ import dev.ghostbyte.nowandagain.domain.dueLabel
 import dev.ghostbyte.nowandagain.domain.intervalLabel
 import dev.ghostbyte.nowandagain.domain.lastDoneLabel
 import dev.ghostbyte.nowandagain.ui.theme.AddTaskButton
-import dev.ghostbyte.nowandagain.ui.theme.AppLogo
-import dev.ghostbyte.nowandagain.ui.theme.ThemeToggleButton
+import dev.ghostbyte.nowandagain.ui.theme.SettingsButton
 import dev.ghostbyte.nowandagain.ui.theme.barColor
 import dev.ghostbyte.nowandagain.widget.WidgetPinner
 import kotlinx.coroutines.launch
@@ -135,7 +134,7 @@ private val FOOTER_MIN_HEIGHT = 200.dp
 
 @Composable
 fun HomeScreen(
-    darkTheme: Boolean, onToggleTheme: () -> Unit, vm: HomeViewModel = viewModel()
+    onOpenSettings: () -> Unit, vm: HomeViewModel = viewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -325,7 +324,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AddTaskButton(onClick = { sheetMode = SheetMode.Add })
-                        ThemeToggleButton(darkTheme = darkTheme, onClick = onToggleTheme)
+                        SettingsButton(onClick = onOpenSettings)
                     }
                 }
             }

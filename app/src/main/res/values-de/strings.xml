@@ -56,4 +56,24 @@
     <string name="widget_hint_manual">Halte den Startbildschirm gedrückt, wähle Widgets und suche nach %1$s.</string>
     <string name="widget_hint_action">Widget hinzufügen</string>
     <string name="widget_hint_close">Hinweis ausblenden</string>
+
+    <string name="settings_title">Einstellungen</string>
+    <string name="cd_open_settings">Einstellungen öffnen</string>
+    <string name="cd_back">Zurück</string>
+    <string name="section_appearance">Darstellung</string>
+    <string name="setting_theme">Design</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="section_reminder">Erinnerung</string>
+    <string name="setting_reminder">Tägliche Erinnerung</string>
+    <string name="setting_reminder_desc">Eine Übersicht der fälligen Aufgaben</string>
+    <string name="setting_reminder_time">Uhrzeit</string>
+    <string name="notifications_blocked">Benachrichtigungen sind für diese App ausgeschaltet.</string>
+    <string name="notifications_open_settings">Einstellungen öffnen</string>
+    <string name="section_about">Über die App</string>
+    <string name="setting_version">Version</string>
+    <string name="privacy_note">Alles bleibt auf deinem Gerät.</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Abbrechen</string>
 </resources>

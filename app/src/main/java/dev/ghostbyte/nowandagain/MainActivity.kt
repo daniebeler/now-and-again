@@ -9,26 +9,25 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import dev.ghostbyte.nowandagain.ui.home.HomeScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.ghostbyte.nowandagain.data.SettingsRepository
+import dev.ghostbyte.nowandagain.data.ThemeMode
+import dev.ghostbyte.nowandagain.ui.AppNavigation
 import dev.ghostbyte.nowandagain.ui.theme.NowAndAgainTheme
-import dev.ghostbyte.nowandagain.ui.theme.ThemePreference
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val themePref = ThemePreference(
-            applicationContext
-        )
+        val repo = SettingsRepository.get(applicationContext)
 
         setContent {
-            var override by remember { mutableStateOf(themePref.load()) }
-            val dark = override ?: isSystemInDarkTheme()
+            val settings by repo.settings.collectAsStateWithLifecycle()
+            val dark = when (settings.themeMode) {
+                ThemeMode.System -> isSystemInDarkTheme()
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
 
-            // Keeps status and navigation bar icons readable when the app theme
-            // differs from the system theme.
             DisposableEffect(dark) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(
@@ -41,15 +40,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            NowAndAgainTheme(darkTheme = dark) {
-                HomeScreen(
-                    darkTheme = dark,
-                    onToggleTheme = {
-                        override = !dark
-                        themePref.save(!dark)
-                    },
-                )
-            }
+            NowAndAgainTheme(darkTheme = dark) { AppNavigation() }
         }
     }
 }

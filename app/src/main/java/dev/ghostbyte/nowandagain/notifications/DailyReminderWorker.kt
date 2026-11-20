@@ -3,7 +3,11 @@ package dev.ghostbyte.nowandagain.notifications
 import android.content.Context
 import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkerParameters
+import dev.ghostbyte.nowandagain.data.AppDatabase
+import dev.ghostbyte.nowandagain.data.SettingsRepository
+import dev.ghostbyte.nowandagain.domain.TaskStatus
 import dev.ghostbyte.nowandagain.domain.daysLeft
 import dev.ghostbyte.nowandagain.domain.status
 import dev.ghostbyte.nowandagain.widget.NextTasksWidget
@@ -17,19 +21,20 @@ class DailyReminderWorker(
     override suspend fun doWork(): Result {
         try {
             val today = LocalDate.now()
-            val due = dev.ghostbyte.nowandagain.data.AppDatabase.get(applicationContext).taskDao().getActive()
+            val settings = SettingsRepository.get(applicationContext).settings.value
+            val due = AppDatabase.get(applicationContext).taskDao().getActive()
                 .filter {
                     val s = it.status(today)
-                    s == dev.ghostbyte.nowandagain.domain.TaskStatus.DueToday || s == dev.ghostbyte.nowandagain.domain.TaskStatus.Overdue
+                    s == TaskStatus.DueToday || s == TaskStatus.Overdue
                 }
                 .sortedBy { it.daysLeft(today) }
 
-            if (due.isNotEmpty()) Notifications.postDue(applicationContext, due, today)
-
-            // Also fixes stale "Done today" and day counts in the widget.
+            if (settings.reminderEnabled && due.isNotEmpty()) {
+                Notifications.postDue(applicationContext, due, today)
+            }
             NextTasksWidget().updateAll(applicationContext)
         } finally {
-            ReminderScheduler.schedule(applicationContext, afterRun = true)
+            ReminderScheduler.schedule(applicationContext, ExistingWorkPolicy.APPEND_OR_REPLACE)
         }
         return Result.success()
     }

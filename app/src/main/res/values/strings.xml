@@ -67,4 +67,24 @@
     <string name="widget_hint_manual">Long-press your home screen, choose Widgets and look for %1$s.</string>
     <string name="widget_hint_action">Add widget</string>
     <string name="widget_hint_close">Hide hint</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="cd_open_settings">Open settings</string>
+    <string name="cd_back">Back</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="setting_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="section_reminder">Reminder</string>
+    <string name="setting_reminder">Daily reminder</string>
+    <string name="setting_reminder_desc">A summary of tasks that are due</string>
+    <string name="setting_reminder_time">Time</string>
+    <string name="notifications_blocked">Notifications are turned off for this app.</string>
+    <string name="notifications_open_settings">Open settings</string>
+    <string name="section_about">About</string>
+    <string name="setting_version">Version</string>
+    <string name="privacy_note">Everything stays on your device.</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
 </resources>

@@ -11,21 +11,13 @@ import androidx.compose.ui.unit.dp
 import dev.ghostbyte.nowandagain.R
 
 @Composable
-fun ThemeToggleButton(
-    darkTheme: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     TopBarButton(onClick = onClick, modifier = modifier) {
-        Crossfade(targetState = darkTheme, label = "themeIcon") { dark ->
-            Icon(
-                painter = painterResource(if (dark) R.drawable.ic_moon else R.drawable.ic_sun),
-                contentDescription = stringResource(
-                    if (dark) R.string.cd_switch_to_light else R.string.cd_switch_to_dark
-                ),
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        Icon(
+            painter = painterResource(R.drawable.ic_settings),
+            contentDescription = stringResource(R.string.cd_open_settings),
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
