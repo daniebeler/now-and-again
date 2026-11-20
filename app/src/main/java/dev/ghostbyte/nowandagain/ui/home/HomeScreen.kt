@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -105,9 +107,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.ghostbyte.nowandagain.R
+import dev.ghostbyte.nowandagain.data.HintPreference
 import dev.ghostbyte.nowandagain.data.Task
 import dev.ghostbyte.nowandagain.domain.TaskStatus
 import dev.ghostbyte.nowandagain.domain.dueLabel
@@ -117,6 +121,7 @@ import dev.ghostbyte.nowandagain.ui.theme.AddTaskButton
 import dev.ghostbyte.nowandagain.ui.theme.AppLogo
 import dev.ghostbyte.nowandagain.ui.theme.ThemeToggleButton
 import dev.ghostbyte.nowandagain.ui.theme.barColor
+import dev.ghostbyte.nowandagain.widget.WidgetPinner
 import kotlinx.coroutines.launch
 
 private sealed interface SheetMode {
@@ -125,6 +130,7 @@ private sealed interface SheetMode {
 }
 
 private const val FOOTER_KEY = "footer"
+private const val HINT_KEY = "widget_hint"
 private val FOOTER_MIN_HEIGHT = 200.dp
 
 @Composable
@@ -157,6 +163,26 @@ fun HomeScreen(
         }
     }
 
+    val hintPrefs = remember { HintPreference(context.applicationContext) }
+    var hintDismissed by remember { mutableStateOf(hintPrefs.widgetHintDismissed) }
+    var hasWidget by remember { mutableStateOf(WidgetPinner.hasWidget(context)) }
+
+// Re-check whenever the user comes back, for example from the launcher.
+    LifecycleResumeEffect(Unit) {
+        hasWidget = WidgetPinner.hasWidget(context)
+        onPauseOrDispose {}
+    }
+
+// Once a widget exists, the hint never returns, even if it's removed later.
+    LaunchedEffect(hasWidget) {
+        if (hasWidget && !hintDismissed) {
+            hintPrefs.dismissWidgetHint()
+            hintDismissed = true
+        }
+    }
+
+    val showWidgetHint = !hintDismissed && !hasWidget && state.items.isNotEmpty()
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -182,15 +208,15 @@ fun HomeScreen(
                         val footerHeightPx by remember(taskCount, footerMinPx) {
                             derivedStateOf {
                                 val info = listState.layoutInfo
-                                val tasks = info.visibleItemsInfo.filter { it.key != FOOTER_KEY }
-                                if (tasks.size < taskCount) {
-                                    footerMinPx // long list: not every task is visible, so no extra space is needed
+                                val visible = info.visibleItemsInfo.filter { it.key != FOOTER_KEY }
+                                val visibleTasks = visible.count { it.key != HINT_KEY }
+                                if (visibleTasks < taskCount) {
+                                    footerMinPx
                                 } else {
-                                    val used =
-                                        info.beforeContentPadding + tasks.sumOf { it.size } + info.afterContentPadding
-                                    maxOf(
-                                        footerMinPx, info.viewportSize.height + footerMinPx - used
-                                    )
+                                    val used = info.beforeContentPadding +
+                                            visible.sumOf { it.size } +
+                                            info.afterContentPadding
+                                    maxOf(footerMinPx, info.viewportSize.height + footerMinPx - used)
                                 }
                             }
                         }
@@ -234,6 +260,21 @@ fun HomeScreen(
                                     )
                                 }
                             }
+
+                            if (showWidgetHint) {
+                                item(key = HINT_KEY) {
+                                    WidgetHint(
+                                        canPin = WidgetPinner.canPin(context),
+                                        onAdd = { WidgetPinner.requestPin(context) },
+                                        onClose = {
+                                            hintPrefs.dismissWidgetHint()
+                                            hintDismissed = true
+                                        },
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                            }
+
                             item(key = FOOTER_KEY) {
                                 ListFooter(Modifier.height(with(density) { footerHeightPx.toDp() }))
                             }
@@ -701,5 +742,66 @@ private fun ListFooter(modifier: Modifier = Modifier) {
                 }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
+    }
+}
+
+@Composable
+private fun WidgetHint(
+    canPin: Boolean,
+    onAdd: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        ),
+    ) {
+        Box {
+            Column(Modifier.padding(20.dp)) {
+                Text(
+                    stringResource(R.string.widget_hint_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(end = 32.dp),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (canPin) stringResource(R.string.widget_hint_body)
+                    else stringResource(
+                        R.string.widget_hint_manual,
+                        stringResource(R.string.app_name),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (canPin) {
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = onAdd,
+                        shape = MaterialTheme.shapes.small,
+                    ) { Text(stringResource(R.string.widget_hint_action)) }
+                }
+            }
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(40.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.widget_hint_close),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
