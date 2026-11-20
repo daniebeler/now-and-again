@@ -117,6 +117,8 @@ import dev.ghostbyte.nowandagain.domain.TaskStatus
 import dev.ghostbyte.nowandagain.domain.dueLabel
 import dev.ghostbyte.nowandagain.domain.intervalLabel
 import dev.ghostbyte.nowandagain.domain.lastDoneLabel
+import dev.ghostbyte.nowandagain.ui.components.AppFooter
+import dev.ghostbyte.nowandagain.ui.components.ListDivider
 import dev.ghostbyte.nowandagain.ui.theme.AddTaskButton
 import dev.ghostbyte.nowandagain.ui.theme.SettingsButton
 import dev.ghostbyte.nowandagain.ui.theme.barColor
@@ -229,13 +231,7 @@ fun HomeScreen(
                                 state.items, key = { _, item -> item.task.id }) { index, item ->
                                 Column(Modifier.animateItem()) {
                                     if (index > 0) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 20.dp),
-                                            thickness = 1.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(
-                                                alpha = 0.5f
-                                            ),
-                                        )
+                                        ListDivider()
                                     }
                                     TaskListItem(
                                         item = item,
@@ -275,7 +271,7 @@ fun HomeScreen(
                             }
 
                             item(key = FOOTER_KEY) {
-                                ListFooter(Modifier.height(with(density) { footerHeightPx.toDp() }))
+                                AppFooter(Modifier.height(with(density) { footerHeightPx.toDp() }))
                             }
                         }
                     }
@@ -702,47 +698,7 @@ private fun IntervalPicker(days: Int, onChange: (Int) -> Unit) {
     }
 }
 
-@Composable
-private fun ListFooter(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Bottom,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.cow),
-            contentDescription = null,
-            modifier = Modifier.height(72.dp),
-        )
-        HorizontalDivider(
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
-        Spacer(Modifier.height(12.dp))
 
-        val uriHandler = LocalUriHandler.current
-
-        Text(
-            stringResource(R.string.footer_credit),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.6.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier
-                .clip(MaterialTheme.shapes.small)
-                .clickable(onClickLabel = stringResource(R.string.cd_open_website)) {
-                    try {
-                        uriHandler.openUri("https://ghostbyte.dev")
-                    } catch (_: Exception) {
-                        // No browser installed: do nothing
-                    }
-                }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        )
-    }
-}
 
 @Composable
 private fun WidgetHint(
