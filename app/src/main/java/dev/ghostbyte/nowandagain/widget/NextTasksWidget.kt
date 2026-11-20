@@ -2,7 +2,6 @@ package dev.ghostbyte.nowandagain.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -10,6 +9,7 @@ import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
@@ -57,6 +57,7 @@ import dev.ghostbyte.nowandagain.ui.theme.Orange40
 import dev.ghostbyte.nowandagain.ui.theme.Orange80
 import dev.ghostbyte.nowandagain.ui.theme.Red40
 import dev.ghostbyte.nowandagain.ui.theme.Red80
+import dev.ghostbyte.nowandagain.R
 
 private val WidgetColors = ColorProviders(light = LightColorScheme, dark = DarkColorScheme)
 
@@ -80,6 +81,8 @@ val TaskIdKey = ActionParameters.Key<Long>("taskId")
 
 @Composable
 private fun WidgetContent(tasks: List<Task>) {
+    val context = LocalContext.current
+
     val today = LocalDate.now()
     val rowHeight = 72.dp
     val maxItems = ((LocalSize.current.height - 24.dp) / rowHeight).toInt().coerceIn(1, 6)
@@ -93,7 +96,7 @@ private fun WidgetContent(tasks: List<Task>) {
         if (items.isEmpty()) {
             Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "Nothing to keep up with",
+                    context.getString(R.string.widget_empty),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant),
                 )
             }
@@ -152,7 +155,7 @@ private fun TaskRow(task: Task, today: LocalDate, height: Dp) {
             )
         }
         Button(
-            text = "Done",
+            text = context.getString(R.string.action_done),
             onClick = actionRunCallback<MarkDoneAction>(
                 actionParametersOf(TaskIdKey to task.id)
             ),

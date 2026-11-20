@@ -95,10 +95,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -217,7 +220,9 @@ fun HomeScreen(
                                             scope.launch {
                                                 snackbarHostState.currentSnackbarData?.dismiss()
                                                 val result = snackbarHostState.showSnackbar(
-                                                    message = resources.getString(R.string.snackbar_task_done, item.task.name),
+                                                    message = resources.getString(
+                                                        R.string.snackbar_task_done, item.task.name
+                                                    ),
                                                     actionLabel = resources.getString(R.string.action_undo),
                                                     duration = SnackbarDuration.Short,
                                                 )
@@ -262,7 +267,18 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AppLogo(size = 67.dp)
+                    //AppLogo(size = 67.dp)
+
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { heading() },
+                    )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -295,7 +311,9 @@ fun HomeScreen(
                         scope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
-                                message = resources.getString(R.string.snackbar_task_deleted, task.name),
+                                message = resources.getString(
+                                    R.string.snackbar_task_deleted, task.name
+                                ),
                                 actionLabel = resources.getString(R.string.action_undo),
                                 duration = SnackbarDuration.Short,
                             )
